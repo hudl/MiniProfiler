@@ -38,9 +38,9 @@ namespace StackExchange.Profiling.Mongo
         {
             get
             {
-                if (MiniProfiler.Settings.MongoFormatter == null) return CommandString;
-
-                return MiniProfiler.Settings.MongoFormatter.FormatMongo(this);
+                return CollectionName + "\n" + ((MiniProfiler.Settings.MongoFormatter == null) ? 
+                    CommandString :
+                    MiniProfiler.Settings.MongoFormatter.FormatMongo(this));
             }
         }
 
@@ -100,16 +100,20 @@ namespace StackExchange.Profiling.Mongo
         [DataMember(Order = 7)]
         public bool IsDuplicate { get; set; }
 
+        [DataMember(Order = 8)]
+        public string CollectionName { get; set; }
+
         private readonly long _startTicks;
         private readonly MiniProfiler _profiler;
 
         /// <summary>
         /// Creates a new SqlTiming to profile 'command'.
         /// </summary>
-        public MongoTiming(string command, ExecuteType type, MiniProfiler profiler)
+        public MongoTiming(string collectionName, string command, ExecuteType type, MiniProfiler profiler)
         {
             Id = Guid.NewGuid();
 
+            CollectionName = collectionName;
             CommandString = command;
             ExecuteType = type;
 

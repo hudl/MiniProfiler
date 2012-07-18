@@ -26,7 +26,7 @@ namespace StackExchange.Profiling.Mongo
         {
             if (_profiler == null) return base.MoveNext();
 
-            if (!_started) _profiler.ExecuteStart(_cursor.Query, ExecuteType.Reader);
+            if (!_started) _profiler.ExecuteStart(_cursor.Collection.Name + ".find", _cursor.Query, ExecuteType.Reader);
             var result = base.MoveNext();
             if (!_started) _profiler.ExecuteFinish(_cursor.Query, ExecuteType.Reader, _cursor);
             

@@ -24,11 +24,12 @@ namespace StackExchange.Profiling.Mongo
 
         public override System.Collections.Generic.IEnumerable<SafeModeResult> InsertBatch<TNominalType>(System.Collections.Generic.IEnumerable<TNominalType> documents, MongoInsertOptions options)
         {
-            object insertObj = new object();
-            _profiler.ExecuteStart(insertObj, ExecuteType.NonQuery);
+            var dlist = documents.ToList();
+            object insertObj = String.Join(",", dlist.Select(d => d.ToString()).ToArray());
+            _profiler.ExecuteStart(this.Name + ".insert", insertObj, ExecuteType.NonQuery);
             try
             {
-                return base.InsertBatch<TNominalType>(documents, options);
+                return base.InsertBatch<TNominalType>(dlist, options);
             }
             finally
             {
@@ -38,8 +39,7 @@ namespace StackExchange.Profiling.Mongo
 
         public override SafeModeResult Update(IMongoQuery query, IMongoUpdate update, MongoUpdateOptions options)
         {
-            var command = String.Format("{0} Query {1} Update {2}", this.Name, query, update);
-            _profiler.ExecuteStart(query, ExecuteType.NonQuery);
+            _profiler.ExecuteStart(this.Name + ".update", query, update, ExecuteType.NonQuery);
             try
             {
                 return base.Update(query, update, options);
@@ -52,8 +52,7 @@ namespace StackExchange.Profiling.Mongo
 
         public override SafeModeResult Remove(IMongoQuery query, RemoveFlags flags, SafeMode safeMode)
         {
-            var command = String.Format("{0} Remove {1}", this.Name, query);
-            _profiler.ExecuteStart(query, ExecuteType.NonQuery);
+            _profiler.ExecuteStart(this.Name + ".remove", query, ExecuteType.NonQuery);
             try
             {
                 return base.Remove(query, flags, safeMode);

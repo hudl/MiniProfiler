@@ -2,7 +2,7 @@
 
   <div class="profiler-result">
 
-    <div class="profiler-button {{if HasDuplicateSqlTimings}}profiler-warning{{/if}}">
+    <div class="profiler-button {{if HasDuplicateSqlTimings || HasDuplicateMongoTimings}}profiler-warning{{/if}}">
     {{if HasDuplicateSqlTimings || HasDuplicateMongoTimings}}<span class="profiler-nuclear">!</span>{{/if}}
       <span class="profiler-number">
         ${MiniProfiler.formatDuration(DurationMilliseconds)} <span class="profiler-unit">ms</span>

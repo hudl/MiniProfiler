@@ -146,9 +146,14 @@ namespace StackExchange.Profiling
             SqlProfiler.ExecuteStart(profiledDbCommand, executeType);
         }
 
-        void IMongoDbProfiler.ExecuteStart(object query, ExecuteType executeType)
+        void IMongoDbProfiler.ExecuteStart(string collectionName, object query, ExecuteType executeType)
         {
-            MongoProfiler.ExecuteStartImpl(query, executeType);
+            MongoProfiler.ExecuteStartImpl(collectionName, query, executeType);
+        }
+
+        void IMongoDbProfiler.ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType)
+        {
+            MongoProfiler.ExecuteStartImpl(collectionName, query, update, executeType);
         }
 
         void IDbProfiler.ExecuteFinish(DbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)

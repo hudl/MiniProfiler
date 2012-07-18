@@ -19,7 +19,7 @@ namespace StackExchange.Profiling.Mongo
 
         public override CommandResult RunCommandAs(Type commandResultType, IMongoCommand command)
         {
-            _profiler.ExecuteStart(command, ExecuteType.NonQuery);
+            _profiler.ExecuteStart(String.Empty, command, ExecuteType.NonQuery);
             try
             {
                 return base.RunCommandAs(commandResultType, command);

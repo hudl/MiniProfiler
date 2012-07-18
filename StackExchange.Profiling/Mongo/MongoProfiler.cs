@@ -30,13 +30,23 @@ namespace StackExchange.Profiling.Mongo
         /// <summary>
         /// Tracks when 'command' is started.
         /// </summary>
-        public void ExecuteStartImpl(object query, ExecuteType type)
+        public void ExecuteStartImpl(string collectionName, object query, ExecuteType type)
         {
             var id = Tuple.Create(query, type);
-            var sqlTiming = new MongoTiming(query.ToString(), type, Profiler);
+            var sqlTiming = new MongoTiming(collectionName, query.ToString(), type, Profiler);
 
             _inProgress[id] = sqlTiming;
         }
+
+        public void ExecuteStartImpl(string collectionName, object query, IMongoUpdate update, ExecuteType type)
+        {
+            var id = Tuple.Create(query, type);
+            var q = String.Format("{0}\n{1}", query, update);
+            var sqlTiming = new MongoTiming(collectionName, q, type, Profiler);
+
+            _inProgress[id] = sqlTiming;
+        }
+
         /// <summary>
         /// Returns all currently open commands on this connection
         /// </summary>
