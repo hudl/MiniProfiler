@@ -2,17 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MongoDB.Driver;
 using StackExchange.Profiling.Data;
 using System.Data.Common;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling
 {
-    partial class MiniProfiler : IDbProfiler
+    partial class MiniProfiler : IDbProfiler, IMongoDbProfiler
     {
         /// <summary>
         /// Contains information about queries executed during this profiling session.
         /// </summary>
         internal SqlProfiler SqlProfiler { get; private set; }
+
+        internal MongoProfiler MongoProfiler { get; private set; }
 
         /// <summary>
         /// Returns all currently open commands on this connection
@@ -28,6 +32,15 @@ namespace StackExchange.Profiling
         public decimal DurationMillisecondsInSql
         {
             get { return GetTimingHierarchy().Sum(t => t.HasSqlTimings ? t.SqlTimings.Sum(s => s.DurationMilliseconds) : 0); }
+        }
+
+        public bool HasMongoTimings { get; set; }
+
+        public bool HasDuplicateMongoTimings { get; set; }
+
+        public decimal DurationMillisecondsInMongo
+        {
+            get { return GetTimingHierarchy().Sum(t => t.HasMongoTimings ? t.MongoTimings.Sum(s => s.DurationMilliseconds) : 0); }
         }
 
         /// <summary>
@@ -76,6 +89,7 @@ namespace StackExchange.Profiling
         /// Contains any sql statements that are executed, along with how many times those statements are executed.
         /// </summary>
         private readonly Dictionary<string, int> _sqlExecutionCounts = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _mongoExecutionCounts = new Dictionary<string, int>();
 
         /// <summary>
         /// Adds <paramref name="stats"/> to the current <see cref="Timing"/>.
@@ -99,6 +113,23 @@ namespace StackExchange.Profiling
             Head.AddSqlTiming(stats);
         }
 
+        internal void AddMongoTiming(Mongo.MongoTiming stats)
+        {
+            if (Head == null)
+                return;
+
+            int count;
+            stats.IsDuplicate = _mongoExecutionCounts.TryGetValue(stats.CommandString, out count);
+            _mongoExecutionCounts[stats.CommandString] = count + 1;
+            
+            HasMongoTimings = true;
+            if (stats.IsDuplicate)
+            {
+                HasDuplicateMongoTimings = true;
+            }
+            Head.AddMongoTiming(stats);
+        }
+
         /// <summary>
         /// Returns the number of sql statements of <paramref name="type"/> that were executed in all <see cref="Timing"/>s.
         /// </summary>
@@ -115,6 +146,11 @@ namespace StackExchange.Profiling
             SqlProfiler.ExecuteStart(profiledDbCommand, executeType);
         }
 
+        void IMongoDbProfiler.ExecuteStart(object query, ExecuteType executeType)
+        {
+            MongoProfiler.ExecuteStartImpl(query, executeType);
+        }
+
         void IDbProfiler.ExecuteFinish(DbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)
         {
             if (reader != null)
@@ -127,9 +163,19 @@ namespace StackExchange.Profiling
             }
         }
 
+        void IMongoDbProfiler.ExecuteFinish(object query, ExecuteType executeType, MongoCursor reader)
+        {
+            MongoProfiler.ExecuteFinishImpl(query, executeType, reader);
+        }
+
         void IDbProfiler.ReaderFinish(DbDataReader reader)
         {
             SqlProfiler.ReaderFinish(reader);
+        }
+
+        void IMongoDbProfiler.ReaderFinish(MongoCursor reader)
+        {
+            MongoProfiler.ReaderFinishedImpl(reader);
         }
 
         void IDbProfiler.OnError(DbCommand profiledDbCommand, ExecuteType executeType, Exception exception)

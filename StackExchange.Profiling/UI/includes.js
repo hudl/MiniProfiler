@@ -608,6 +608,16 @@ var MiniProfiler = (function ($) {
                             result.push(sqlTiming);
                         }
                     }
+                    
+                    if (timing.MongoTimings) {
+                        for (var i = 0, mongoTiming; i < timing.MongoTimings.length; i++) {
+                            mongoTiming = timing.MongoTimings[i];
+
+                            // HACK: add info about the parent Timing to each SqlTiming so UI can render
+                            mongoTiming.ParentTimingName = timing.Name;
+                            result.push(mongoTiming);
+                        }
+                    }
 
                     if (timing.Children) {
                         for (var i = 0; i < timing.Children.length; i++) {
@@ -741,6 +751,23 @@ var MiniProfiler = (function ($) {
                     }
                 };
             countSql(root);
+            return result;
+        },
+        
+        getMongoTimingsCount: function (root) {
+            var result = 0,
+                countMongo = function (timing) {
+                    if (timing.MongoTimings) {
+                        result += timing.MongoTimings.length;
+                    }
+
+                    if (timing.Children) {
+                        for (var i = 0; i < timing.Children.length; i++) {
+                            countMongo(timing.Children[i]);
+                        }
+                    }
+                };
+            countMongo(root);
             return result;
         },
 

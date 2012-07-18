@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Web;
 using StackExchange.Profiling.Helpers;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling
 {
@@ -251,6 +252,8 @@ namespace StackExchange.Profiling
             /// The formatter applied to the SQL being rendered (used only for UI)
             /// </summary>
             public static ISqlFormatter SqlFormatter { get; set; }
+
+            public static IMongoFormatter MongoFormatter { get; set; }
 
             /// <summary>
             /// Assembly version of this dank MiniProfiler.

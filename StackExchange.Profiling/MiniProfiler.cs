@@ -8,6 +8,7 @@ using System.Web;
 using System.Web.Routing;
 using System.Web.Script.Serialization;
 using StackExchange.Profiling.Helpers;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling
 {
@@ -194,6 +195,7 @@ namespace StackExchange.Profiling
             Id = Guid.NewGuid();
             Level = level;
             SqlProfiler = new SqlProfiler(this);
+            MongoProfiler = new MongoProfiler(this);
             MachineName = Environment.MachineName;
             Started = DateTime.UtcNow;
 
@@ -390,6 +392,8 @@ namespace StackExchange.Profiling
         {
             HasSqlTimings = GetTimingHierarchy().Any(t => t.HasSqlTimings);
             HasDuplicateSqlTimings = GetTimingHierarchy().Any(t => t.HasDuplicateSqlTimings);
+            HasMongoTimings = GetTimingHierarchy().Any(t => t.HasMongoTimings);
+            HasDuplicateMongoTimings = GetTimingHierarchy().Any(t => t.HasDuplicateMongoTimings);
             if (_root != null)
             {
                 _root.RebuildParentTimings();
@@ -410,7 +414,6 @@ namespace StackExchange.Profiling
                 return (MiniProfiler)serializer.ReadObject(ms);
             }
         }
-        
     }
 
     /// <summary>
@@ -494,6 +497,8 @@ namespace StackExchange.Profiling
             profiler.Head.AddChild(externalProfiler.Root);
             profiler.HasSqlTimings |= externalProfiler.HasSqlTimings;
             profiler.HasDuplicateSqlTimings |= externalProfiler.HasDuplicateSqlTimings;
+            profiler.HasMongoTimings |= externalProfiler.HasMongoTimings;
+            profiler.HasDuplicateMongoTimings |= externalProfiler.HasDuplicateMongoTimings;
         }
 
         /// <summary>

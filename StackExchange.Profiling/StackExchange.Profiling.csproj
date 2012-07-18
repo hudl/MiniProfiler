@@ -44,6 +44,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="MongoDB.Driver">
+      <HintPath>..\..\..\..\..\..\github\hudl\DataAccess\External\MongoDB.Driver.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
@@ -97,6 +100,15 @@
     </Compile>
     <Compile Include="MiniProfiler.cs" />
     <Compile Include="ClientTimingHelper.cs" />
+    <Compile Include="Mongo\IMongoDbProfiler.cs" />
+    <Compile Include="Mongo\IMongoFormatter.cs" />
+    <Compile Include="Mongo\MongoFormatter.cs" />
+    <Compile Include="Mongo\MongoProfiler.cs" />
+    <Compile Include="Mongo\MongoTiming.cs" />
+    <Compile Include="Mongo\ProfiledMongoCollection.cs" />
+    <Compile Include="Mongo\ProfiledMongoCursor.cs" />
+    <Compile Include="Mongo\ProfiledMongoCursorEnumerator.cs" />
+    <Compile Include="Mongo\ProfiledMongoDatabase.cs" />
     <Compile Include="MVCHelpers\ProfilingActionFilter.cs" />
     <Compile Include="MVCHelpers\ProfilingViewEngine.cs" />
     <Compile Include="SqlFormatters\InlineFormatter.cs" />
