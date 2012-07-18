@@ -3,7 +3,7 @@
   <div class="profiler-result">
 
     <div class="profiler-button {{if HasDuplicateSqlTimings}}profiler-warning{{/if}}">
-    {{if HasDuplicateSqlTimings}}<span class="profiler-nuclear">!</span>{{/if}}
+    {{if HasDuplicateSqlTimings || HasDuplicateMongoTimings}}<span class="profiler-nuclear">!</span>{{/if}}
       <span class="profiler-number">
         ${MiniProfiler.formatDuration(DurationMilliseconds)} <span class="profiler-unit">ms</span>
       </span>
@@ -27,6 +27,9 @@
             {{if HasSqlTimings}}
               <th colspan="2">query time (ms)</th>
             {{/if}}
+            {{if HasMongoTimings}}
+              <th colspan="2">query time (ms)</th>
+            {{/if}}
             </tr>
           </thead>
           <tbody>
@@ -44,6 +47,12 @@
               <td colspan="2" class="profiler-number profiler-percent-in-sql" title="${MiniProfiler.getSqlTimingsCount(Root)} queries spent ${MiniProfiler.formatDuration(DurationMillisecondsInSql)} ms of total request time">
                 ${MiniProfiler.formatDuration(DurationMillisecondsInSql / DurationMilliseconds * 100)}
                 <span class="profiler-unit">% in sql</span>
+              </td>
+            {{/if}}
+            {{if HasMongoTimings}}
+              <td colspan="2" class="profiler-number profiler-percent-in-sql" title="${MiniProfiler.getMongoTimingsCount(Root)} queries spent ${MiniProfiler.formatDuration(DurationMillisecondsInMongo)} ms of total request time">
+                ${MiniProfiler.formatDuration(DurationMillisecondsInMongo / DurationMilliseconds * 100)}
+                <span class="profiler-unit">% in mongo</span>
               </td>
             {{/if}}
             </tr>
@@ -146,6 +155,18 @@
     </td>
     <td class="profiler-duration" title="aggregate duration of all queries in this step (excludes children)">
       ${MiniProfiler.formatDuration(SqlTimingsDurationMilliseconds)}
+    </td>
+  {{/if}}
+
+  {{if HasMongoTimings}}
+    <td class="profiler-duration {{if HasDuplicateMongoTimings}}profiler-warning{{/if}}" title="{{if HasDuplicateMongoTimings}}duplicate queries detected - {{/if}}${ExecutedMongoReaders} reader, ${ExecutedMongoScalars} scalar, ${ExecutedMongoNonQueries} non-query statements executed">
+      <a class="profiler-queries-show">
+        {{if HasDuplicateMongoTimings}}<span class="profiler-nuclear">!</span>{{/if}}
+        ${MongoTimings.length} <span class="profiler-unit">mongo</span>
+      </a>
+    </td>
+    <td class="profiler-duration" title="aggregate duration of all queries in this step (excludes children)">
+      ${MiniProfiler.formatDuration(MongoTimingsDurationMilliseconds)}
     </td>
   {{/if}}
 

@@ -5,6 +5,7 @@ using System.Web;
 using System.Runtime.Serialization;
 using System.Web.Script.Serialization;
 using StackExchange.Profiling.Data;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling
 {
@@ -56,6 +57,9 @@ namespace StackExchange.Profiling
         [DataMember(Order = 7)]
         public List<SqlTiming> SqlTimings { get; set; }
 
+        [DataMember(Order = 8)]
+        public List<MongoTiming> MongoTimings { get; set; }
+
         /// <summary>
         /// Needed for database deserialization and JSON serialization.
         /// </summary>
@@ -87,6 +91,13 @@ namespace StackExchange.Profiling
             if (SqlTimings != null)
             {
                 foreach (var timing in SqlTimings)
+                {
+                    timing.ParentTiming = this;
+                }
+            }
+            if (MongoTimings != null)
+            {
+                foreach (var timing in MongoTimings)
                 {
                     timing.ParentTiming = this;
                 }
@@ -130,6 +141,11 @@ namespace StackExchange.Profiling
             get { return HasSqlTimings ? Math.Round(SqlTimings.Sum(s => s.DurationMilliseconds), 1) : 0; }
         }
 
+        public decimal MongoTimingsDurationMilliseconds
+        {
+            get { return HasMongoTimings ? Math.Round(MongoTimings.Sum(s => s.DurationMilliseconds), 1) : 0; }
+        }
+
         /// <summary>
         /// Returns true when this <see cref="DurationWithoutChildrenMilliseconds"/> is less than the configured
         /// <see cref="MiniProfiler.Settings.TrivialDurationThresholdMilliseconds"/>, by default 2.0 ms.
@@ -171,6 +187,16 @@ namespace StackExchange.Profiling
         public bool HasDuplicateSqlTimings
         {
             get { return HasSqlTimings && SqlTimings.Any(s => s.IsDuplicate); }
+        }
+
+        public bool HasMongoTimings
+        {
+            get { return MongoTimings != null && MongoTimings.Count > 0; }
+        }
+
+        public bool HasDuplicateMongoTimings
+        {
+            get { return HasMongoTimings && MongoTimings.Any(m => m.IsDuplicate); }
         }
 
         /// <summary>
@@ -223,6 +249,30 @@ namespace StackExchange.Profiling
         public int ExecutedNonQueries
         {
             get { return GetExecutedCount(ExecuteType.NonQuery); }
+        }
+
+        /// <summary>
+        /// How many sql data readers were executed in this Timing step. Does not include queries in any child Timings.
+        /// </summary>
+        public int ExecutedMongoReaders
+        {
+            get { return GetExecutedMongoCount(ExecuteType.Reader); }
+        }
+
+        /// <summary>
+        /// How many sql scalar queries were executed in this Timing step. Does not include queries in any child Timings.
+        /// </summary>
+        public int ExecutedMongoScalars
+        {
+            get { return GetExecutedMongoCount(ExecuteType.Scalar); }
+        }
+
+        /// <summary>
+        /// How many sql non-query statements were executed in this Timing step. Does not include queries in any child Timings.
+        /// </summary>
+        public int ExecutedMongoNonQueries
+        {
+            get { return GetExecutedMongoCount(ExecuteType.NonQuery); }
         }
 
         /// <summary>
@@ -341,6 +391,20 @@ namespace StackExchange.Profiling
         internal int GetExecutedCount(ExecuteType type)
         {
             return HasSqlTimings ? SqlTimings.Count(s => s.ExecuteType == type) : 0;
+        }
+
+        internal int GetExecutedMongoCount(ExecuteType type)
+        {
+            return HasMongoTimings ? MongoTimings.Count(s => s.ExecuteType == type) : 0;
+        }
+
+        internal void AddMongoTiming(Mongo.MongoTiming mongoTiming)
+        {
+            if (MongoTimings == null)
+                MongoTimings = new List<MongoTiming>();
+
+            MongoTimings.Add(mongoTiming);
+            mongoTiming.ParentTiming = this;
         }
     }
 }
