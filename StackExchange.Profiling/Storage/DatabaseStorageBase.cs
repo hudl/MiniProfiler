@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Data.Common;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling.Storage
 {
@@ -83,7 +84,7 @@ namespace StackExchange.Profiling.Storage
         /// Giving freshly selected collections, this method puts them in the correct
         /// hierarchy under the 'result' MiniProfiler.
         /// </summary>
-        protected void MapTimings(MiniProfiler result, List<Timing> timings, List<SqlTiming> sqlTimings, List<SqlTimingParameter> sqlParameters, ClientTimings clientTimings)
+        protected void MapTimings(MiniProfiler result, List<Timing> timings, List<SqlTiming> sqlTimings, List<SqlTimingParameter> sqlParameters, ClientTimings clientTimings, List<MongoTiming> mongoTimings)
         {
             var stack = new Stack<Timing>();
 
@@ -101,6 +102,14 @@ namespace StackExchange.Profiling.Storage
                         {
                             sqlTiming.Parameters = parameters.ToList();
                         }
+                    }
+                }
+
+                foreach (var mongoTiming in mongoTimings)
+                {
+                    if (mongoTiming.ParentTimingId == cur.Id)
+                    {
+                        cur.AddMongoTiming(mongoTiming);
                     }
                 }
 

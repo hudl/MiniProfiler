@@ -8,6 +8,7 @@ using System.Data.Common;
 using StackExchange.Profiling.Helpers;
 using StackExchange.Profiling.Helpers.Dapper;
 using System.Runtime.Serialization;
+using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling.Storage
 {
@@ -49,6 +50,8 @@ namespace StackExchange.Profiling.Storage
              DurationMillisecondsInSql,
              HasSqlTimings,
              HasDuplicateSqlTimings,
+             HasMongoTimings,
+             HasDuplicateMongoTimings,
              HasTrivialTimings,
              HasAllTrivialTimings,
              TrivialDurationThresholdMilliseconds,
@@ -64,6 +67,8 @@ select       @Id,
              @DurationMillisecondsInSql,
              @HasSqlTimings,
              @HasDuplicateSqlTimings,
+             @HasMongoTimings,
+             @HasDuplicateMongoTimings,
              @HasTrivialTimings,
              @HasAllTrivialTimings,
              @TrivialDurationThresholdMilliseconds,
@@ -85,6 +90,8 @@ where not exists (select 1 from MiniProfilers where Id = @Id)"; // this syntax w
                     DurationMillisecondsInSql = profiler.DurationMillisecondsInSql,
                     HasSqlTimings = profiler.HasSqlTimings,
                     HasDuplicateSqlTimings = profiler.HasDuplicateSqlTimings,
+                    HasMongoTimings = profiler.HasMongoTimings,
+                    HasDuplicateMongoTimings = profiler.HasDuplicateMongoTimings,
                     HasTrivialTimings = profiler.HasTrivialTimings,
                     HasAllTrivialTimings = profiler.HasAllTrivialTimings,
                     TrivialDurationThresholdMilliseconds = profiler.TrivialDurationThresholdMilliseconds,
@@ -129,14 +136,20 @@ where not exists (select 1 from MiniProfilers where Id = @Id)"; // this syntax w
              DurationMilliseconds,
              DurationWithoutChildrenMilliseconds,
              SqlTimingsDurationMilliseconds,
+             MongoTimingsDurationMilliseconds,
              IsRoot,
              HasChildren,
              IsTrivial,
              HasSqlTimings,
              HasDuplicateSqlTimings,
+             HasMongoTimings,
+             HasDuplicateMongoTimings,
              ExecutedReaders,
              ExecutedScalars,
-             ExecutedNonQueries)
+             ExecutedNonQueries,
+             ExecutedMongoReaders,
+             ExecutedMongoScalars,
+             ExecutedMongoNonQueries)
 values      (@Id,
              @MiniProfilerId,
              @ParentTimingId,
@@ -146,14 +159,20 @@ values      (@Id,
              @DurationMilliseconds,
              @DurationWithoutChildrenMilliseconds,
              @SqlTimingsDurationMilliseconds,
+             @MongoTimingsDurationMilliseconds,
              @IsRoot,
              @HasChildren,
              @IsTrivial,
              @HasSqlTimings,
              @HasDuplicateSqlTimings,
+             @HasMongoTimings,
+             @HasDuplicateMongoTimings,
              @ExecutedReaders,
              @ExecutedScalars,
-             @ExecutedNonQueries)";
+             @ExecutedNonQueries,
+             @ExecutedMongoReaders,
+             @ExecutedMongoScalars,
+             @ExecutedMongoNonQueries)";
 
             conn.Execute(sql, new
             {
@@ -166,14 +185,20 @@ values      (@Id,
                 DurationMilliseconds = t.DurationMilliseconds,
                 DurationWithoutChildrenMilliseconds = t.DurationWithoutChildrenMilliseconds,
                 SqlTimingsDurationMilliseconds = t.SqlTimingsDurationMilliseconds,
+                MongoTimingsDurationMilliseconds = t.MongoTimingsDurationMilliseconds,
                 IsRoot = t.IsRoot,
                 HasChildren = t.HasChildren,
                 IsTrivial = t.IsTrivial,
                 HasSqlTimings = t.HasSqlTimings,
                 HasDuplicateSqlTimings = t.HasDuplicateSqlTimings,
+                HasMongoTimings = t.HasMongoTimings,
+                HasDuplicateMongoTimings = t.HasDuplicateMongoTimings,
                 ExecutedReaders = t.ExecutedReaders,
                 ExecutedScalars = t.ExecutedScalars,
-                ExecutedNonQueries = t.ExecutedNonQueries
+                ExecutedNonQueries = t.ExecutedNonQueries,
+                ExecutedMongoReaders = t.ExecutedMongoReaders,
+                ExecutedMongoScalars = t.ExecutedMongoScalars,
+                ExecutedMongoNonQueries = t.ExecutedMongoNonQueries
             });
 
             if (t.HasSqlTimings)
@@ -181,6 +206,14 @@ values      (@Id,
                 foreach (var st in t.SqlTimings)
                 {
                     SaveSqlTiming(conn, profiler, st);
+                }
+            }
+
+            if (t.HasMongoTimings)
+            {
+                foreach (var st in t.MongoTimings)
+                {
+                    SaveMongoTiming(conn, profiler, st);
                 }
             }
 
@@ -275,11 +308,52 @@ values      (@MiniProfilerId,
             }
         }
 
+        protected virtual void SaveMongoTiming(DbConnection conn, MiniProfiler profiler, MongoTiming st)
+        {
+            const string sql =
+@"insert into MiniProfilerMongoTimings
+            (Id,
+             MiniProfilerId,
+             ParentTimingId,
+             ExecuteType,
+             StartMilliseconds,
+             DurationMilliseconds,
+             FirstFetchDurationMilliseconds,
+             IsDuplicate,
+             StackTraceSnippet,
+             CommandString)
+values      (@Id,
+             @MiniProfilerId,
+             @ParentTimingId,
+             @ExecuteType,
+             @StartMilliseconds,
+             @DurationMilliseconds,
+             @FirstFetchDurationMilliseconds,
+             @IsDuplicate,
+             @StackTraceSnippet,
+             @CommandString)";
+
+            conn.Execute(sql, new
+            {
+                Id = st.Id,
+                MiniProfilerId = profiler.Id,
+                ParentTimingId = st.ParentTiming.Id,
+                ExecuteType = st.ExecuteType,
+                StartMilliseconds = st.StartMilliseconds,
+                DurationMilliseconds = st.DurationMilliseconds,
+                FirstFetchDurationMilliseconds = st.FirstFetchDurationMilliseconds,
+                IsDuplicate = st.IsDuplicate,
+                StackTraceSnippet = st.StackTraceSnippet.Truncate(200),
+                CommandString = st.CommandString
+            });
+        }
+
         private static readonly Dictionary<Type, string> LoadSqlStatements = new Dictionary<Type, string>
         {
             { typeof(MiniProfiler), "select * from MiniProfilers where Id = @id" },
             { typeof(Timing), "select * from MiniProfilerTimings where MiniProfilerId = @id order by RowId" },
             { typeof(SqlTiming), "select * from MiniProfilerSqlTimings where MiniProfilerId = @id order by RowId" },
+            { typeof(MongoTiming), "select * from MiniProfilerMongoTimings where MiniProfilerId = @id order by RowId" },
             { typeof(SqlTimingParameter), "select * from MiniProfilerSqlTimingParameters where MiniProfilerId = @id" },
             { typeof(ClientTimings.ClientTiming), "select * from MiniProfilerClientTimings where MiniProfilerId = @id"}
         };
@@ -340,6 +414,7 @@ values      (@MiniProfilerId,
                 {
                     var timings = multi.Read<Timing>().ToList();
                     var sqlTimings = multi.Read<SqlTiming>().ToList();
+                    var mongoTimings = multi.Read<MongoTiming>().ToList();
                     var sqlParameters = multi.Read<SqlTimingParameter>().ToList();
                     var clientTimingList = multi.Read<ClientTimings.ClientTiming>().ToList();
                     ClientTimings clientTimings = null;
@@ -348,7 +423,7 @@ values      (@MiniProfilerId,
                         clientTimings = new ClientTimings();
                         clientTimings.Timings = clientTimingList;
                     }
-                    MapTimings(result, timings, sqlTimings, sqlParameters, clientTimings);
+                    MapTimings(result, timings, sqlTimings, sqlParameters, clientTimings, mongoTimings);
                 }
             }
 
@@ -363,6 +438,7 @@ values      (@MiniProfilerId,
             {
                 var timings = LoadFor<Timing>(conn, idParameter);
                 var sqlTimings = LoadFor<SqlTiming>(conn, idParameter);
+                var mongoTimings = LoadFor<MongoTiming>(conn, idParameter);
                 var sqlParameters = LoadFor<SqlTimingParameter>(conn, idParameter);
                 var clientTimingList = LoadFor<ClientTimings.ClientTiming>(conn, idParameter).ToList();
                 ClientTimings clientTimings = null;
@@ -371,7 +447,7 @@ values      (@MiniProfilerId,
                     clientTimings = new ClientTimings();
                     clientTimings.Timings = clientTimingList;
                 }
-                MapTimings(result, timings, sqlTimings, sqlParameters,clientTimings);
+                MapTimings(result, timings, sqlTimings, sqlParameters, clientTimings, mongoTimings);
             }
 
             return result;
@@ -455,6 +531,8 @@ order  by Started";
      DurationMillisecondsInSql            decimal(7, 1) null,
      HasSqlTimings                        bit not null,
      HasDuplicateSqlTimings               bit not null,
+     HasMongoTimings                        bit not null,
+     HasDuplicateMongoTimings               bit not null,
      HasTrivialTimings                    bit not null,
      HasAllTrivialTimings                 bit not null,
      TrivialDurationThresholdMilliseconds decimal(5, 1) null,
@@ -473,14 +551,20 @@ create table MiniProfilerTimings
      DurationMilliseconds                decimal(7, 1) not null,
      DurationWithoutChildrenMilliseconds decimal(7, 1) not null,
      SqlTimingsDurationMilliseconds      decimal(7, 1) null,
+     MongoTimingsDurationMilliseconds    decimal(7, 1) null,
      IsRoot                              bit not null,
      HasChildren                         bit not null,
      IsTrivial                           bit not null,
      HasSqlTimings                       bit not null,
      HasDuplicateSqlTimings              bit not null,
+     HasMongoTimings                     bit not null,
+     HasDuplicateMongoTimings            bit not null,
      ExecutedReaders                     smallint not null,
      ExecutedScalars                     smallint not null,
-     ExecutedNonQueries                  smallint not null
+     ExecutedNonQueries                  smallint not null,
+     ExecutedMongoReaders                smallint not null,
+     ExecutedMongoScalars                smallint not null,
+     ExecutedMongoNonQueries             smallint not null
   );
 
 create table MiniProfilerSqlTimings
@@ -506,6 +590,21 @@ create table MiniProfilerSqlTimingParameters
      DbType            nvarchar(50) null,
      Size              int null,
      Value             nvarchar(max) null -- sqlite: remove (max) -- sql server ce: replace with ntext
+  );
+
+create table MiniProfilerMongoTimings
+  (
+     RowId                          integer primary key identity, -- sqlite: replace identity with autoincrement
+     Id                             uniqueidentifier not null,
+     MiniProfilerId                 uniqueidentifier not null,
+     ParentTimingId                 uniqueidentifier not null,
+     ExecuteType                    tinyint not null,
+     StartMilliseconds              decimal(7, 1) not null,
+     DurationMilliseconds           decimal(7, 1) not null,
+     FirstFetchDurationMilliseconds decimal(7, 1) null,
+     IsDuplicate                    bit not null,
+     StackTraceSnippet              nvarchar(200) not null,
+     CommandString                  nvarchar(max) not null -- sqlite: remove (max) -- sql server ce: replace with ntext
   );
 
 create table MiniProfilerClientTimings
