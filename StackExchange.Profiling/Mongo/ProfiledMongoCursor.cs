@@ -17,7 +17,7 @@ namespace StackExchange.Profiling.Mongo
 
         public override IEnumerator<T> GetEnumerator()
         {
-            if (MiniProfiler.Current != null) return new ProfiledMongoCursorEnumerator<T>(this, _profiler);
+            if (_profiler != null) return new ProfiledMongoCursorEnumerator<T>(this, _profiler);
             return base.GetEnumerator();
         }
     }
