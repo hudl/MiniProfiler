@@ -24,7 +24,7 @@
               <th>duration (ms)</th>
               <th class="profiler-duration-with-children">with children (ms)</th>
               <th class="time-from-start">from start (ms)</th>
-            {{if HasSqlTimings}}
+            {{if HasSqlTimings || HasMongoTimings}}
               <th colspan="2">query time (ms)</th>
             {{/if}}
             {{if HasMongoTimings}}
@@ -48,6 +48,8 @@
                 ${MiniProfiler.formatDuration(DurationMillisecondsInSql / DurationMilliseconds * 100)}
                 <span class="profiler-unit">% in sql</span>
               </td>
+            {{else HasMongoTimings}}
+              <td colspan="2"></td>
             {{/if}}
             {{if HasMongoTimings}}
               <td colspan="2" class="profiler-number profiler-percent-in-sql" title="${MiniProfiler.getMongoTimingsCount(Root)} queries spent ${MiniProfiler.formatDuration(DurationMillisecondsInMongo)} ms of total request time">
@@ -92,7 +94,7 @@
       </div>
     </div>
 
-  {{if HasSqlTimings}}
+  {{if HasSqlTimings || HasMongoTimings}}
     <div class="profiler-queries">
       <table>
       <thead>
@@ -156,6 +158,8 @@
     <td class="profiler-duration" title="aggregate duration of all queries in this step (excludes children)">
       ${MiniProfiler.formatDuration(SqlTimingsDurationMilliseconds)}
     </td>
+  {{else HasMongoTimings}}
+    <td colspan="2"></td>
   {{/if}}
 
   {{if HasMongoTimings}}
