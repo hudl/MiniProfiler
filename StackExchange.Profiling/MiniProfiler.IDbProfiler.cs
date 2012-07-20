@@ -148,12 +148,12 @@ namespace StackExchange.Profiling
 
         void IMongoDbProfiler.ExecuteStart(string collectionName, object query, ExecuteType executeType)
         {
-            MongoProfiler.ExecuteStartImpl(collectionName, query, executeType);
+            MongoProfiler.ExecuteStart(collectionName, query, executeType);
         }
 
         void IMongoDbProfiler.ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType)
         {
-            MongoProfiler.ExecuteStartImpl(collectionName, query, update, executeType);
+            MongoProfiler.ExecuteStart(collectionName, query, update, executeType);
         }
 
         void IDbProfiler.ExecuteFinish(DbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)
@@ -170,7 +170,7 @@ namespace StackExchange.Profiling
 
         void IMongoDbProfiler.ExecuteFinish(object query, ExecuteType executeType, MongoCursor reader)
         {
-            MongoProfiler.ExecuteFinishImpl(query, executeType, reader);
+            MongoProfiler.ExecuteFinish(query, executeType, reader);
         }
 
         void IDbProfiler.ReaderFinish(DbDataReader reader)
@@ -180,7 +180,7 @@ namespace StackExchange.Profiling
 
         void IMongoDbProfiler.ReaderFinish(MongoCursor reader)
         {
-            MongoProfiler.ReaderFinishedImpl(reader);
+            MongoProfiler.ReaderFinish(reader);
         }
 
         void IDbProfiler.OnError(DbCommand profiledDbCommand, ExecuteType executeType, Exception exception)

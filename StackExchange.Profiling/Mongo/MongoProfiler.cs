@@ -9,7 +9,7 @@ using StackExchange.Profiling.Data;
 
 namespace StackExchange.Profiling.Mongo
 {
-    class MongoProfiler
+    public class MongoProfiler
     {
         ConcurrentDictionary<Tuple<object, ExecuteType>, MongoTiming> _inProgress = new ConcurrentDictionary<Tuple<object, ExecuteType>, MongoTiming>();
         ConcurrentDictionary<MongoCursor, MongoTiming> _inProgressCursors = new ConcurrentDictionary<MongoCursor, MongoTiming>();
@@ -73,7 +73,7 @@ namespace StackExchange.Profiling.Mongo
         /// <summary>
         /// Called when 'reader' finishes its iterations and is closed.
         /// </summary>
-        public void ReaderFinishedImpl(MongoCursor reader)
+        public void ReaderFinishImpl(MongoCursor reader)
         {
             MongoTiming stat;
             // this reader may have been disposed/closed by reader code, not by our using()
@@ -84,5 +84,42 @@ namespace StackExchange.Profiling.Mongo
                 _inProgressCursors.TryRemove(reader, out ignore);
             }
         }
+    }
+
+    public static class MongoProfilerExtensions
+    {
+        /// <summary>
+        /// Tracks when 'command' is started.
+        /// </summary>
+        public static void ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, ExecuteType type)
+        {
+            if (mongoProfiler == null) return;
+            mongoProfiler.ExecuteStartImpl(collectionName, query, type);
+        }
+
+        public static void ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, IMongoUpdate update, ExecuteType type)
+        {
+            if (mongoProfiler == null) return;
+            mongoProfiler.ExecuteStartImpl(collectionName, query, update, type);
+        }
+
+        /// <summary>
+        /// Finishes profiling for 'command', recording durations.
+        /// </summary>
+        public static void ExecuteFinish(this MongoProfiler mongoProfiler, object query, ExecuteType type, MongoCursor reader = null)
+        {
+            if (mongoProfiler == null) return;
+            mongoProfiler.ExecuteFinishImpl(query, type, reader);
+        }
+
+        /// <summary>
+        /// Called when 'reader' finishes its iterations and is closed.
+        /// </summary>
+        public static void ReaderFinish(this MongoProfiler mongoProfiler, MongoCursor reader)
+        {
+            if (mongoProfiler == null) return;
+            mongoProfiler.ReaderFinishImpl(reader);
+        }
+
     }
 }

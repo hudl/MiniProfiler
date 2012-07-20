@@ -9,24 +9,25 @@ namespace StackExchange.Profiling.Mongo
     {
         private readonly object _databaseLock = new object();
         private readonly Dictionary<MongoCollectionSettings, MongoCollection> _collections = new Dictionary<MongoCollectionSettings, MongoCollection>();
-        private readonly IMongoDbProfiler _profiler;
 
-        public ProfiledMongoDatabase(MongoServer server, MongoDatabaseSettings settings, IMongoDbProfiler profiler)
+        public ProfiledMongoDatabase(MongoServer server, MongoDatabaseSettings settings)
             : base(server, settings)
         {
-            _profiler = profiler;
         }
 
         public override CommandResult RunCommandAs(Type commandResultType, IMongoCommand command)
         {
-            if (_profiler != null) _profiler.ExecuteStart(String.Empty, command, ExecuteType.NonQuery);
+            IMongoDbProfiler profiler = MiniProfiler.Current;
+            if (profiler == null) return base.RunCommandAs(commandResultType, command);
+
+            profiler.ExecuteStart(String.Empty, command, ExecuteType.NonQuery);
             try
             {
                 return base.RunCommandAs(commandResultType, command);
             }
             finally
             {
-                if (_profiler != null) _profiler.ExecuteFinish(command, ExecuteType.NonQuery, null);
+                profiler.ExecuteFinish(command, ExecuteType.NonQuery, null);
             }
         }
 
@@ -39,7 +40,7 @@ namespace StackExchange.Profiling.Mongo
                     MongoCollection conn;
                     if (!_collections.TryGetValue((MongoCollectionSettings)collectionSettings, out conn))
                     {
-                        conn = (MongoCollection)new ProfiledMongoCollection<TDefaultDocument>(this, collectionSettings, _profiler);
+                        conn = (MongoCollection)new ProfiledMongoCollection<TDefaultDocument>(this, collectionSettings);
                         _collections.Add((MongoCollectionSettings)collectionSettings, conn);
                     }
                     return (MongoCollection<TDefaultDocument>)conn;
