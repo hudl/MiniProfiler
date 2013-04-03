@@ -22,7 +22,9 @@ module Rack
       end
 
       def to_json(*a)
-        ::JSON.generate(@attributes, a[0])
+        # this does could take in an option hash, but the only interesting there is max_nesting.
+        #   if this becomes an option we could increase
+        ::JSON.generate( @attributes, :max_nesting => 100 )
       end
 
     end

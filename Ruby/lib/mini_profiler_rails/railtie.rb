@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module MiniProfilerRails
 
   class Railtie < ::Rails::Railtie
@@ -7,11 +9,12 @@ module MiniProfilerRails
 
       # By default, only show the MiniProfiler in development mode, in production allow profiling if post_authorize_cb is set
       c.pre_authorize_cb = lambda { |env|
-        Rails.env.development? || Rails.env.production?  
+        !Rails.env.test?
       }
 
+      c.skip_paths ||= []
+
       if Rails.env.development?
-        c.skip_paths ||= []
         c.skip_paths << "/assets/"
         c.skip_schema_queries = true
       end
@@ -22,14 +25,14 @@ module MiniProfilerRails
 
       # The file store is just so much less flaky
       tmp = Rails.root.to_s + "/tmp/miniprofiler"
-      Dir::mkdir(tmp) unless File.exists?(tmp)
+      FileUtils.mkdir_p(tmp) unless File.exists?(tmp)
 
       c.storage_options = {:path => tmp}
       c.storage = Rack::MiniProfiler::FileStore
 
       # Quiet the SQL stack traces
       c.backtrace_remove = Rails.root.to_s + "/"
-      c.backtrace_filter =  /^\/?(app|config|lib|test)/
+      c.backtrace_includes =  [/^\/?(app|config|lib|test)/]
       c.skip_schema_queries =  Rails.env != 'production'
 
       # Install the Middleware

@@ -1,6 +1,8 @@
 require 'spec_helper'
 require 'mini_profiler/timer_struct'
 
+require 'json'
+
 describe Rack::MiniProfiler::TimerStruct do
 
   before do
@@ -25,6 +27,11 @@ describe Rack::MiniProfiler::TimerStruct do
 
     it 'has a JSON value' do
       @json.should_not be_nil
+    end
+
+    it 'should not add a second (nil) argument if no arguments were passed' do
+      ::JSON.should_receive( :generate ).once.with( @timer.attributes, :max_nesting => 100 ).and_return( nil )
+      @timer.to_json
     end
 
     describe 'deserialized' do

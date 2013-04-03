@@ -7,7 +7,7 @@ obj
 *.sdf
 *.nupkg
 nuget.exe
-Ruby/lib/html
+Ruby/Gemfile.lock
 Ruby/*.gem
 *.*~
 *.swp

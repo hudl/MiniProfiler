@@ -1,11 +1,13 @@
 ﻿"use strict";
-var MiniProfiler = (function ($) {
+var MiniProfiler = (function () {
+    var $;
 
     var options,
         container,
         controls,
         fetchedIds = [],
-        fetchingIds = []  // so we never pull down a profiler twice
+        fetchingIds = [], // so we never pull down a profiler twice
+        ajaxStartTime
         ;
 
     var hasLocalStorage = function () {
@@ -59,11 +61,10 @@ var MiniProfiler = (function ($) {
         }
     };
 
-    var getClientPerformance = function () {
+    var getClientPerformance = function() {
         return window.performance == null ? null : window.performance;
-    }
+    };
 
-    var waitedForEnd = 0;
     var fetchResults = function (ids) {
         var clientPerformance, clientProbes, i, j, p, id, idx;
 
@@ -73,15 +74,15 @@ var MiniProfiler = (function ($) {
             clientPerformance = null;
             clientProbes = null;
 
-            if (id == options.currentId) {
-
-                if (window.mPt) {
-                    clientProbes = mPt.t;
-                    for (j = 0; j < clientProbes.length; j++) {
-                        clientProbes[j].d = clientProbes[j].d.getTime();
-                    }
-                    mPt.t = [];
+            if (window.mPt) {
+                clientProbes = mPt.results();
+                for (j = 0; j < clientProbes.length; j++) {
+                    clientProbes[j].d = clientProbes[j].d.getTime();
                 }
+                mPt.flush();
+            }
+            
+            if (id == options.currentId) {
 
                 clientPerformance = getClientPerformance();
 
@@ -100,7 +101,22 @@ var MiniProfiler = (function ($) {
                         copy.navigation.redirectCount = clientPerformance.navigation.redirectCount;
                     }
                     clientPerformance = copy;
+
+                    // hack to add chrome timings 
+                    if (window.chrome && window.chrome.loadTimes) {
+                      var chromeTimes = window.chrome.loadTimes(); 
+                      if (chromeTimes.firstPaintTime) {
+                        clientPerformance.timing["First Paint Time"] = Math.round(chromeTimes.firstPaintTime * 1000);
+                      }
+                      if (chromeTimes.firstPaintTime) {
+                        clientPerformance.timing["First Paint After Load Time"] = Math.round(chromeTimes.firstPaintAfterLoadTime * 1000);
+                      }
+
+                    }
                 }
+            } else if (ajaxStartTime != null && clientProbes && clientProbes.length > 0) {
+                clientPerformance = { timing: { navigationStart: ajaxStartTime.getTime() } };
+                ajaxStartTime = null;
             }
 
             if ($.inArray(id, fetchedIds) < 0 && $.inArray(id, fetchingIds) < 0) {
@@ -348,6 +364,9 @@ var MiniProfiler = (function ($) {
                 popupHide(button, popup);
             }
         });
+        $(document).bind('keydown', options.toggleShortcut, function(e) {
+            $('.profiler-results').toggle();
+        });
     };
 
     var initFullView = function () {
@@ -416,6 +435,7 @@ var MiniProfiler = (function ($) {
                 // get master page profiler results
                 fetchResults(options.ids);
             });
+            if (options.startHidden) container.hide();
         }
         else {
             fetchResults(options.ids);
@@ -433,10 +453,14 @@ var MiniProfiler = (function ($) {
         };
 
         // fetch profile results for any ajax calls
+        // note, this does not use $ cause we want to hook into the main jQuery
         if (jQuery && jQuery(document) && jQuery(document).ajaxComplete) {
             jQuery(document).ajaxComplete(jQueryAjaxComplete);
         }
 
+        if (jQuery && jQuery(document).ajaxStart)
+            jQuery(document).ajaxStart(function () { ajaxStartTime = new Date(); });
+        
         // fetch results after ASP Ajax calls
         if (typeof (Sys) != 'undefined' && typeof (Sys.WebForms) != 'undefined' && typeof (Sys.WebForms.PageRequestManager) != 'undefined') {
             // Get the instance of PageRequestManager.
@@ -487,20 +511,92 @@ var MiniProfiler = (function ($) {
             });
         }
 
+        if (typeof (MooTools) != 'undefined' && typeof (Request) != 'undefined') {
+          Request.prototype.addEvents({
+            onComplete: function() {
+              var stringIds = this.xhr.getResponseHeader('X-MiniProfiler-Ids');
+              if (stringIds) {
+                var ids = typeof JSON != 'undefined' ? JSON.parse(stringIds) : eval(stringIds);
+                fetchResults(ids);
+              }
+            }
+          });
+        }
+
+        // add support for AngularJS, which use the basic XMLHttpRequest object.
+        if (window.angular && typeof (XMLHttpRequest) != 'undefined') {
+          var _send = XMLHttpRequest.prototype.send;
+
+          XMLHttpRequest.prototype.send = function sendReplacement(data) {
+            this._onreadystatechange = this.onreadystatechange;
+
+            this.onreadystatechange = function onReadyStateChangeReplacement() {
+              if (this.readyState == 4) {
+                var stringIds = this.getResponseHeader('X-MiniProfiler-Ids');
+                if (stringIds) {
+                  var ids = typeof JSON != 'undefined' ? JSON.parse(stringIds) : eval(stringIds);
+                  fetchResults(ids);
+                }
+              }
+
+              return this._onreadystatechange.apply(this, arguments);
+            }
+
+            return _send.apply(this, arguments);
+          }
+        }
+
         // some elements want to be hidden on certain doc events
         bindDocumentEvents();
     };
 
     return {
 
-        init: function (opt) {
+        init: function () {
+            var script = document.getElementById('mini-profiler');
+            if (!script || !script.getAttribute) return;
 
-            options = opt || {};
+            options = (function () {
+                var version = script.getAttribute('data-version');
+                var path = script.getAttribute('data-path');
+
+                var currentId = script.getAttribute('data-current-id');
+
+                var ids = script.getAttribute('data-ids');
+                if (ids)  ids = ids.split(',');
+
+                var position = script.getAttribute('data-position');
+
+                var toggleShortcut = script.getAttribute('data-toggle-shortcut');
+
+                if (script.getAttribute('data-max-traces'))
+                    var maxTraces = parseInt(script.getAttribute('data-max-traces'));
+
+                if (script.getAttribute('data-trivial') === 'true') var trivial = true;
+                if (script.getAttribute('data-children') == 'true') var children = true;
+                if (script.getAttribute('data-controls') == 'true') var controls = true;
+                if (script.getAttribute('data-authorized') == 'true') var authorized = true;
+                if (script.getAttribute('data-start-hidden') == 'true') var startHidden = true;
+
+                return {
+                    ids: ids,
+                    path: path,
+                    version: version,
+                    renderPosition: position,
+                    showTrivial: trivial,
+                    showChildrenTime: children,
+                    maxTracesToShow: maxTraces,
+                    showControls: controls,
+                    currentId: currentId,
+                    authorized: authorized,
+                    toggleShortcut: toggleShortcut,
+                    startHidden: startHidden
+                }
+            })();
 
             var doInit = function () {
                 // when rendering a shared, full page, this div will exist
                 container = $('.profiler-result-full');
-
                 if (container.length) {
                     if (window.location.href.indexOf("&trivial=1") > 0) {
                         options.showTrivial = true
@@ -527,24 +623,49 @@ var MiniProfiler = (function ($) {
                 document.getElementsByTagName('head')[0].appendChild(sc);
             };
 
-            if (options.authorized) {
-                var url = options.path + "includes.css?v=" + options.version;
-                if (document.createStyleSheet) {
-                    document.createStyleSheet(url);
+            var wait = 0;
+            var finish = false;
+            var deferInit = function() {
+                if (finish) return;
+                if (window.performance && window.performance.timing && window.performance.timing.loadEventEnd == 0 && wait < 10000) {
+                    setTimeout(deferInit, 100);
+                    wait += 100;
                 } else {
-                    $('head').append($('<link rel="stylesheet" type="text/css" href="' + url + '" />'));
+                    finish = true;
+                    init();
                 }
+            };
 
-                if (!$.tmpl) {
-                    load(options.path + 'jquery.tmpl.js?v=' + options.version, doInit);
+            var init = function() {
+                if (options.authorized) {
+                    var url = options.path + "includes.css?v=" + options.version;
+                    if (document.createStyleSheet) {
+                        document.createStyleSheet(url);
+                    } else {
+                        $('head').append($('<link rel="stylesheet" type="text/css" href="' + url + '" />'));
+                    }
+                    if (!$.tmpl) {
+                        load(options.path + 'jquery.tmpl.js?v=' + options.version, doInit);
+                    } else {
+                        doInit();
+                    }
                 } else {
                     doInit();
                 }
-            }
-            else {
-                doInit();
-            }
+            };
 
+            if (typeof(jQuery) == 'function') {
+                var jQueryVersion = jQuery.fn.jquery.split('.');
+            }
+            if (jQueryVersion && parseInt(jQueryVersion[0]) < 2 && parseInt(jQueryVersion[1]) >= 7) {
+                MiniProfiler.jQuery = $ = jQuery;
+                $(deferInit);
+            } else {
+                load(options.path + "jquery.1.7.1.js?v=" + options.version, function() {
+                    MiniProfiler.jQuery = $ = jQuery.noConflict(true);
+                    $(deferInit);
+                });
+            }
         },
 
         getClientTimingByName: function (clientTiming, name) {
@@ -593,7 +714,7 @@ var MiniProfiler = (function ($) {
 
             for (var i = 0; i < clientTimings.Timings.length; i++) {
                 t = clientTimings.Timings[i];
-                var trivial = t.Name != "Dom Complete" && t.Name != "Response";
+                var trivial = t.Name != "Dom Complete" && t.Name != "Response" && t.Name != "First Paint Time";
                 trivial = t.Duration < 2 ? trivial : false;
                 list.push(
                 {
@@ -641,7 +762,7 @@ var MiniProfiler = (function ($) {
             // start adding at the root and recurse down
             addToResults(root);
 
-            var removeDuration = function (list, duration) {
+            var removeDuration = function(list, duration) {
 
                 var newList = [];
                 for (var i = 0; i < list.length; i++) {
@@ -665,7 +786,7 @@ var MiniProfiler = (function ($) {
                 }
 
                 return newList;
-            }
+            };
 
             var processTimes = function (elem, parent) {
                 var duration = { start: elem.StartMilliseconds, finish: (elem.StartMilliseconds + elem.DurationMilliseconds) };
@@ -687,7 +808,7 @@ var MiniProfiler = (function ($) {
             // sort results by time
             result.sort(function (a, b) { return a.StartMilliseconds - b.StartMilliseconds; });
 
-            var determineOverlap = function (gap, node) {
+            var determineOverlap = function(gap, node) {
                 var overlap = 0;
                 for (var i = 0; i < node.richTiming.length; i++) {
                     var current = node.richTiming[i];
@@ -701,7 +822,7 @@ var MiniProfiler = (function ($) {
                     overlap += Math.min(gap.finish, current.finish) - Math.max(gap.start, current.start);
                 }
                 return overlap;
-            }
+            };
 
             var determineGap = function (gap, node, match) {
                 var overlap = determineOverlap(gap, node);
@@ -791,7 +912,16 @@ var MiniProfiler = (function ($) {
             return (duration || 0).toFixed(1);
         }
     };
-})(jQueryMP);
+})();
+
+MiniProfiler.init();
+
+// jquery.hotkeys.js
+// https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js
+
+(function(d){function h(g){if("string"===typeof g.data){var h=g.handler,j=g.data.toLowerCase().split(" ");g.handler=function(b){if(!(this!==b.target&&(/textarea|select/i.test(b.target.nodeName)||"text"===b.target.type))){var c="keypress"!==b.type&&d.hotkeys.specialKeys[b.which],e=String.fromCharCode(b.which).toLowerCase(),a="",f={};b.altKey&&"alt"!==c&&(a+="alt+");b.ctrlKey&&"ctrl"!==c&&(a+="ctrl+");b.metaKey&&(!b.ctrlKey&&"meta"!==c)&&(a+="meta+");b.shiftKey&&"shift"!==c&&(a+="shift+");c?f[a+c]=
+!0:(f[a+e]=!0,f[a+d.hotkeys.shiftNums[e]]=!0,"shift+"===a&&(f[d.hotkeys.shiftNums[e]]=!0));c=0;for(e=j.length;c<e;c++)if(f[j[c]])return h.apply(this,arguments)}}}}d.hotkeys={version:"0.8",specialKeys:{8:"backspace",9:"tab",13:"return",16:"shift",17:"ctrl",18:"alt",19:"pause",20:"capslock",27:"esc",32:"space",33:"pageup",34:"pagedown",35:"end",36:"home",37:"left",38:"up",39:"right",40:"down",45:"insert",46:"del",96:"0",97:"1",98:"2",99:"3",100:"4",101:"5",102:"6",103:"7",104:"8",105:"9",106:"*",107:"+",
+109:"-",110:".",111:"/",112:"f1",113:"f2",114:"f3",115:"f4",116:"f5",117:"f6",118:"f7",119:"f8",120:"f9",121:"f10",122:"f11",123:"f12",144:"numlock",145:"scroll",191:"/",224:"meta"},shiftNums:{"`":"~",1:"!",2:"@",3:"#",4:"$",5:"%",6:"^",7:"&",8:"*",9:"(","0":")","-":"_","=":"+",";":": ","'":'"',",":"<",".":">","/":"?","\\":"|"}};d.each(["keydown","keyup","keypress"],function(){d.event.special[this]={add:h}})})(jQuery);
 
 // prettify.js
 // http://code.google.com/p/google-code-prettify/

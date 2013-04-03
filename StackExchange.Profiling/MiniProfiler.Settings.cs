@@ -9,6 +9,8 @@ using StackExchange.Profiling.Mongo;
 
 namespace StackExchange.Profiling
 {
+    using StackExchange.Profiling.SqlFormatters;
+
     partial class MiniProfiler
     {
         /// <summary>
@@ -59,12 +61,12 @@ namespace StackExchange.Profiling
                         files.AddRange(System.IO.Directory.EnumerateFiles(customUITemplatesPath));
                     }
 
-                    using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                    using (var sha256 = new System.Security.Cryptography.SHA256CryptoServiceProvider())
                     {
                         byte[] hash = new byte[sha256.HashSize / 8];
                         foreach (string file in files)
                         {
-                            // sha256 is FIPS BABY - FIPS 
+                            // sha256 can throw a FIPS exception, but SHA256CryptoServiceProvider is FIPS BABY - FIPS 
                             byte[] contents = System.IO.File.ReadAllBytes(file);
                             byte[] hashfile = sha256.ComputeHash(contents);
                             for (int i = 0; i < (sha256.HashSize / 8); i++)
@@ -213,16 +215,30 @@ namespace StackExchange.Profiling
             public static RenderPosition PopupRenderPosition { get; set; }
 
             /// <summary>
+            /// Allows showing/hiding of popup results buttons via keyboard.
+            /// </summary>
+            [DefaultValue("Alt+P")]
+            public static string PopupToggleKeyboardShortcut { get; set; }
+
+            /// <summary>
+            /// When true, results buttons will not initially be shown, requiring keyboard activation via <see cref="PopupToggleKeyboardShortcut"/>.
+            /// </summary>
+            [DefaultValue(false)]
+            public static bool PopupStartHidden { get; set; }
+
+            /// <summary>
             /// Determines if min-max, clear, etc are rendered; defaults to false.
             /// For a per-page override you can use .RenderIncludes(showControls: true/false)
             /// </summary>
             [DefaultValue(false)]
             public static bool ShowControls { get; set; }
 
+            /// <summary>
             /// Determines if Miniprofiler relies on jQuery already loaded on the page; defaults to false.
             /// For a per-page override you can use .RenderIncludes(useExistingjQuery: true/false)
             /// </summary>
             [DefaultValue(false)]
+            [Obsolete("Remove this; includes.js will automatically check for a valid version of jquery, loading ours if none is found.", true)]
             public static bool UseExistingjQuery { get; set; }
 
             /// <summary>

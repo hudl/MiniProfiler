@@ -18,24 +18,30 @@ describe Rack::MiniProfiler do
         run lambda { |env| [302, {'Content-Type' => 'text/html'}, '<h1>POST</h1>'] }
       end
       map '/html' do
-        run lambda { |env| [200, {'Content-Type' => 'text/html'}, '<h1>Hi</h1>'] }
+        run lambda { |env| [200, {'Content-Type' => 'text/html'}, "<html><BODY><h1>Hi</h1></BODY>\n \t</html>"] }
       end
-      map '/db' do 
-        run lambda { |env| 
+      map '/implicitbody' do
+        run lambda { |env| [200, {'Content-Type' => 'text/html'}, "<html><h1>Hi</h1></html>"] }
+      end
+      map '/implicitbodyhtml' do
+        run lambda { |env| [200, {'Content-Type' => 'text/html'}, "<h1>Hi</h1>"] }
+      end
+      map '/db' do
+        run lambda { |env|
           ::Rack::MiniProfiler.record_sql("I want to be, in a db", 10)
-          [200, {'Content-Type' => 'text/html'}, '<h1>Hi+db</h1>'] 
+          [200, {'Content-Type' => 'text/html'}, '<h1>Hi+db</h1>']
         }
       end
-      map '/3ms' do 
-        run lambda { |env| 
+      map '/3ms' do
+        run lambda { |env|
           sleep(0.003)
-          [200, {'Content-Type' => 'text/html'}, '<h1>Hi</h1>'] 
+          [200, {'Content-Type' => 'text/html'}, '<h1>Hi</h1>']
         }
       end
       map '/whitelisted' do
-        run lambda { |env| 
+        run lambda { |env|
           Rack::MiniProfiler.authorize_request
-          [200, {'Content-Type' => 'text/html'}, '<h1>path1</h1>'] 
+          [200, {'Content-Type' => 'text/html'}, '<h1>path1</h1>']
         }
       end
     }.to_app
@@ -66,10 +72,44 @@ describe Rack::MiniProfiler do
     end
 
     it 'has the JS in the body' do
-      last_response.body.include?('MiniProfiler.init').should be_true
+      last_response.body.include?('/mini-profiler-resources/includes.js').should be_true
+    end
+
+    it 'has a functioning share link' do
+      h = last_response.headers['X-MiniProfiler-Ids']
+      id = ::JSON.parse(h)[0]
+      get "/mini-profiler-resources/results?id=#{id}"
+      last_response.should be_ok
     end
 
   end
+
+
+  describe 'with an implicit body tag' do
+
+    before do
+      get '/implicitbody'
+    end
+
+    it 'has the JS in the body' do
+      last_response.body.include?('/mini-profiler-resources/includes.js').should be_true
+    end
+
+  end
+
+
+  describe 'with implicit body and html tags' do
+
+    before do
+      get '/implicitbodyhtml'
+    end
+
+    it 'has the JS in the body' do
+      last_response.body.include?('/mini-profiler-resources/includes.js').should be_true
+    end
+
+  end
+
 
   describe 'configuration' do
     it "doesn't add MiniProfiler if the callback fails" do
@@ -78,7 +118,7 @@ describe Rack::MiniProfiler do
       last_response.headers.has_key?('X-MiniProfiler-Ids').should be_false
     end
 
-    it "skips paths listed" do 
+    it "skips paths listed" do
       Rack::MiniProfiler.config.skip_paths = ['/path/', '/path2/']
       get '/path2/a'
       last_response.headers.has_key?('X-MiniProfiler-Ids').should be_false
@@ -94,13 +134,13 @@ describe Rack::MiniProfiler do
   end
 
   describe 'special options' do
-    it "omits db backtrace if requested" do 
-      get '/db?pp=no-backtrace' 
+    it "omits db backtrace if requested" do
+      get '/db?pp=no-backtrace'
       prof = load_prof(last_response)
       stack = prof["Root"]["SqlTimings"][0]["StackTraceSnippet"]
       stack.should be_nil
     end
-    
+
   end
 
   describe 'POST followed by GET' do
@@ -112,29 +152,37 @@ describe Rack::MiniProfiler do
       ::JSON.parse(ids).length.should == 2
     end
   end
-  
+
   describe 'sampling mode' do
-    it "should sample stack traces if requested" do 
-      get '/3ms?pp=sample' 
+    it "should sample stack traces if requested" do
+      get '/3ms?pp=sample'
       last_response["Content-Type"].should == 'text/plain'
     end
   end
 
 
   describe 'authorization mode whitelist' do
-    before do 
+    before do
       Rack::MiniProfiler.config.authorization_mode = :whitelist
     end
 
-    it "should ban requests that are not whitelisted" do 
+    it "should ban requests that are not whitelisted" do
       get '/html'
       last_response.headers['X-MiniProfiler-Ids'].should be_nil
     end
 
-    it "should allow requests that are whitelisted" do 
+    it "should allow requests that are whitelisted" do
       set_cookie("__profilin=stylin")
       get '/whitelisted'
       last_response.headers['X-MiniProfiler-Ids'].should_not be_nil
+    end
+  end
+
+
+  describe 'gc profiler' do
+    it "should return a report" do
+      get '/html?pp=profile-gc'
+      last_response.header['Content-Type'].should == 'text/plain'
     end
   end
 

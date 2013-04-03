@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using MongoDB.Driver;
@@ -113,7 +114,7 @@ namespace StackExchange.Profiling
             Head.AddSqlTiming(stats);
         }
 
-        internal void AddMongoTiming(Mongo.MongoTiming stats)
+        internal void AddMongoTiming(MongoTiming stats)
         {
             if (Head == null)
                 return;
@@ -141,7 +142,7 @@ namespace StackExchange.Profiling
 
         // IDbProfiler methods
 
-        void IDbProfiler.ExecuteStart(DbCommand profiledDbCommand, ExecuteType executeType)
+        void IDbProfiler.ExecuteStart(IDbCommand profiledDbCommand, ExecuteType executeType)
         {
             SqlProfiler.ExecuteStart(profiledDbCommand, executeType);
         }
@@ -156,7 +157,7 @@ namespace StackExchange.Profiling
             MongoProfiler.ExecuteStart(collectionName, query, update, executeType);
         }
 
-        void IDbProfiler.ExecuteFinish(DbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)
+        void IDbProfiler.ExecuteFinish(IDbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)
         {
             if (reader != null)
             {
@@ -172,8 +173,8 @@ namespace StackExchange.Profiling
         {
             MongoProfiler.ExecuteFinish(query, executeType, reader);
         }
-
-        void IDbProfiler.ReaderFinish(DbDataReader reader)
+        
+        void IDbProfiler.ReaderFinish(IDataReader reader)
         {
             SqlProfiler.ReaderFinish(reader);
         }
@@ -183,7 +184,7 @@ namespace StackExchange.Profiling
             MongoProfiler.ReaderFinish(reader);
         }
 
-        void IDbProfiler.OnError(DbCommand profiledDbCommand, ExecuteType executeType, Exception exception)
+        void IDbProfiler.OnError(IDbCommand profiledDbCommand, ExecuteType executeType, Exception exception)
         {
             // TODO: implement errors aggregation and presentation
         }
@@ -191,7 +192,10 @@ namespace StackExchange.Profiling
 
         bool _isActive;
         bool IDbProfiler.IsActive { get { return _isActive; } }
-        internal bool IsActive { set { _isActive = value; } }
-
+        internal bool IsActive
+        {
+            get { return _isActive; }
+            set { _isActive = value; }
+        }
     }
 }
