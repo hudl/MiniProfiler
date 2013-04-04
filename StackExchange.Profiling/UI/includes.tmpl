@@ -170,19 +170,19 @@
     <td class="profiler-duration" title="aggregate duration of all queries in this step (excludes children)">
       ${MiniProfiler.formatDuration(timing.SqlTimingsDurationMilliseconds)}
     </td>
-  {{else HasMongoTimings}}
+  {{else timing.HasMongoTimings}}
     <td colspan="2"></td>
   {{/if}}
 
-  {{if HasMongoTimings}}
-    <td class="profiler-duration {{if HasDuplicateMongoTimings}}profiler-warning{{/if}}" title="{{if HasDuplicateMongoTimings}}duplicate queries detected - {{/if}}${ExecutedMongoReaders} reader, ${ExecutedMongoScalars} scalar, ${ExecutedMongoNonQueries} non-query statements executed">
+  {{if timing.HasMongoTimings}}
+    <td class="profiler-duration {{if timing.HasDuplicateMongoTimings}}profiler-warning{{/if}}" title="{{if timing.HasDuplicateMongoTimings}}duplicate queries detected - {{/if}}${timing.ExecutedMongoReaders} reader, ${timing.ExecutedMongoScalars} scalar, ${timing.ExecutedMongoNonQueries} non-query statements executed">
       <a class="profiler-queries-show">
-        {{if HasDuplicateMongoTimings}}<span class="profiler-nuclear">!</span>{{/if}}
-        ${MongoTimings.length} <span class="profiler-unit">mongo</span>
+        {{if timing.HasDuplicateMongoTimings}}<span class="profiler-nuclear">!</span>{{/if}}
+        ${timing.MongoTimings.length} <span class="profiler-unit">mongo</span>
       </a>
     </td>
     <td class="profiler-duration" title="aggregate duration of all queries in this step (excludes children)">
-      ${MiniProfiler.formatDuration(MongoTimingsDurationMilliseconds)}
+      ${MiniProfiler.formatDuration(timing.MongoTimingsDurationMilliseconds)}
     </td>
   {{/if}}
 
