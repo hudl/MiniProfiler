@@ -147,14 +147,14 @@ namespace StackExchange.Profiling
             SqlProfiler.ExecuteStart(profiledDbCommand, executeType);
         }
 
-        void IMongoDbProfiler.ExecuteStart(string collectionName, object query, ExecuteType executeType)
+        Guid IMongoDbProfiler.ExecuteStart(string collectionName, object query, ExecuteType executeType)
         {
-            MongoProfiler.ExecuteStart(collectionName, query, executeType);
+            return MongoProfiler.ExecuteStart(collectionName, query, executeType);
         }
 
-        void IMongoDbProfiler.ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType)
+        Guid IMongoDbProfiler.ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType)
         {
-            MongoProfiler.ExecuteStart(collectionName, query, update, executeType);
+            return MongoProfiler.ExecuteStart(collectionName, query, update, executeType);
         }
 
         void IDbProfiler.ExecuteFinish(IDbCommand profiledDbCommand, ExecuteType executeType, DbDataReader reader)
@@ -169,9 +169,9 @@ namespace StackExchange.Profiling
             }
         }
 
-        void IMongoDbProfiler.ExecuteFinish(object query, ExecuteType executeType, MongoCursor reader)
+        void IMongoDbProfiler.ExecuteFinish(Guid id, MongoCursor reader)
         {
-            MongoProfiler.ExecuteFinish(query, executeType, reader);
+            MongoProfiler.ExecuteFinish(id, reader);
         }
         
         void IDbProfiler.ReaderFinish(IDataReader reader)

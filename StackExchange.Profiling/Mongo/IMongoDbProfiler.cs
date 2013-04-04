@@ -9,9 +9,9 @@ namespace StackExchange.Profiling.Mongo
 {
     public interface IMongoDbProfiler
     {
-        void ExecuteStart(string collectionName, object query, ExecuteType executeType);
-        void ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType);
-        void ExecuteFinish(object query, ExecuteType executeType, MongoCursor reader);
+        Guid ExecuteStart(string collectionName, object query, ExecuteType executeType);
+        Guid ExecuteStart(string collectionName, IMongoQuery query, IMongoUpdate update, ExecuteType executeType);
+        void ExecuteFinish(Guid id, MongoCursor reader);
         void ReaderFinish(MongoCursor reader);
     }
 }

@@ -20,14 +20,14 @@ namespace StackExchange.Profiling.Mongo
             IMongoDbProfiler profiler = MiniProfiler.Current;
             if (profiler == null) return base.RunCommandAs(commandResultType, command);
 
-            profiler.ExecuteStart(String.Empty, command, ExecuteType.NonQuery);
+            var id = profiler.ExecuteStart(String.Empty, command, ExecuteType.NonQuery);
             try
             {
                 return base.RunCommandAs(commandResultType, command);
             }
             finally
             {
-                profiler.ExecuteFinish(command, ExecuteType.NonQuery, null);
+                profiler.ExecuteFinish(id, null);
             }
         }
 

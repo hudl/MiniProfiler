@@ -11,7 +11,7 @@ namespace StackExchange.Profiling.Mongo
 {
     public class MongoProfiler
     {
-        ConcurrentDictionary<Tuple<object, ExecuteType>, MongoTiming> _inProgress = new ConcurrentDictionary<Tuple<object, ExecuteType>, MongoTiming>();
+        ConcurrentDictionary<Guid, MongoTiming> _inProgress = new ConcurrentDictionary<Guid, MongoTiming>();
         ConcurrentDictionary<MongoCursor, MongoTiming> _inProgressCursors = new ConcurrentDictionary<MongoCursor, MongoTiming>();
 
         /// <summary>
@@ -30,21 +30,23 @@ namespace StackExchange.Profiling.Mongo
         /// <summary>
         /// Tracks when 'command' is started.
         /// </summary>
-        public void ExecuteStartImpl(string collectionName, object query, ExecuteType type)
+        public Guid ExecuteStartImpl(string collectionName, object query, ExecuteType type)
         {
-            var id = Tuple.Create(query, type);
+            var id = Guid.NewGuid();
             var sqlTiming = new MongoTiming(collectionName, query.ToString(), type, Profiler);
 
             _inProgress[id] = sqlTiming;
+            return id;
         }
 
-        public void ExecuteStartImpl(string collectionName, object query, IMongoUpdate update, ExecuteType type)
+        public Guid ExecuteStartImpl(string collectionName, object query, IMongoUpdate update, ExecuteType type)
         {
-            var id = Tuple.Create(query, type);
+            var id = Guid.NewGuid();
             var q = String.Format("{0}\n{1}", query, update);
             var sqlTiming = new MongoTiming(collectionName, q, type, Profiler);
 
             _inProgress[id] = sqlTiming;
+            return id;
         }
 
         /// <summary>
@@ -57,9 +59,8 @@ namespace StackExchange.Profiling.Mongo
         /// <summary>
         /// Finishes profiling for 'command', recording durations.
         /// </summary>
-        public void ExecuteFinishImpl(object query, ExecuteType type, MongoCursor reader = null)
+        public void ExecuteFinishImpl(Guid id, MongoCursor reader = null)
         {
-            var id = Tuple.Create(query, type);
             var current = _inProgress[id];
             current.ExecutionComplete(isReader: reader != null);
             MongoTiming ignore;
@@ -91,25 +92,25 @@ namespace StackExchange.Profiling.Mongo
         /// <summary>
         /// Tracks when 'command' is started.
         /// </summary>
-        public static void ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, ExecuteType type)
+        public static Guid ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, ExecuteType type)
         {
-            if (mongoProfiler == null) return;
-            mongoProfiler.ExecuteStartImpl(collectionName, query, type);
+            if (mongoProfiler == null) return Guid.Empty;
+            return mongoProfiler.ExecuteStartImpl(collectionName, query, type);
         }
 
-        public static void ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, IMongoUpdate update, ExecuteType type)
+        public static Guid ExecuteStart(this MongoProfiler mongoProfiler, string collectionName, object query, IMongoUpdate update, ExecuteType type)
         {
-            if (mongoProfiler == null) return;
-            mongoProfiler.ExecuteStartImpl(collectionName, query, update, type);
+            if (mongoProfiler == null) return Guid.Empty;
+            return mongoProfiler.ExecuteStartImpl(collectionName, query, update, type);
         }
 
         /// <summary>
         /// Finishes profiling for 'command', recording durations.
         /// </summary>
-        public static void ExecuteFinish(this MongoProfiler mongoProfiler, object query, ExecuteType type, MongoCursor reader = null)
+        public static void ExecuteFinish(this MongoProfiler mongoProfiler, Guid id, MongoCursor reader = null)
         {
             if (mongoProfiler == null) return;
-            mongoProfiler.ExecuteFinishImpl(query, type, reader);
+            mongoProfiler.ExecuteFinishImpl(id, reader);
         }
 
         /// <summary>

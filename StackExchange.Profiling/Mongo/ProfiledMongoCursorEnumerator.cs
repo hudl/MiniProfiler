@@ -14,6 +14,7 @@ namespace StackExchange.Profiling.Mongo
         private bool _started;
         private readonly MongoCursor<T> _cursor;
         private IMongoDbProfiler _profiler;
+        private Guid _id;
 
         public ProfiledMongoCursorEnumerator(MongoCursor<T> cursor, IMongoDbProfiler profiler) 
             : base(cursor)
@@ -26,9 +27,9 @@ namespace StackExchange.Profiling.Mongo
         {
             if (_profiler == null) return base.MoveNext();
 
-            if (!_started) _profiler.ExecuteStart(_cursor.Collection.Name + ".find", _cursor.Query, ExecuteType.Reader);
+            if (!_started) _id = _profiler.ExecuteStart(_cursor.Collection.Name + ".find", _cursor.Query, ExecuteType.Reader);
             var result = base.MoveNext();
-            if (!_started) _profiler.ExecuteFinish(_cursor.Query, ExecuteType.Reader, _cursor);
+            if (!_started) _profiler.ExecuteFinish(_id, _cursor);
             
             if (!result)
             {
