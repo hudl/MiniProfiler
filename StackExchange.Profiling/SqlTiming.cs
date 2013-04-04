@@ -74,6 +74,26 @@ namespace StackExchange.Profiling
             }
         }
 
+        public SqlTiming(string command, ExecuteType type, MiniProfiler profiler)
+        {
+            Id = Guid.NewGuid();
+
+            CommandString = command;
+            Parameters = new List<SqlTimingParameter>();
+            ExecuteType = type;
+
+            if (!MiniProfiler.Settings.ExcludeStackTraceSnippetFromSqlTimings)
+                StackTraceSnippet = Helpers.StackTraceSnippet.Get();
+
+            _profiler = profiler;
+            if (_profiler != null)
+            {
+                _profiler.AddSqlTiming(this);
+                _startTicks = _profiler.ElapsedTicks;
+                StartMilliseconds = _profiler.GetRoundedMilliseconds(_startTicks);
+            }
+        }
+
         /// <summary>
         /// Gets or sets a unique identifier for this <c>SqlTiming</c>
         /// </summary>
