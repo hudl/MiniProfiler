@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
-using System.Text;
 using MongoDB.Driver;
 using StackExchange.Profiling.Data;
 
@@ -11,8 +8,8 @@ namespace StackExchange.Profiling.Mongo
 {
     public class MongoProfiler
     {
-        ConcurrentDictionary<Guid, MongoTiming> _inProgress = new ConcurrentDictionary<Guid, MongoTiming>();
-        ConcurrentDictionary<MongoCursor, MongoTiming> _inProgressCursors = new ConcurrentDictionary<MongoCursor, MongoTiming>();
+        readonly ConcurrentDictionary<Guid, MongoTiming> _inProgress = new ConcurrentDictionary<Guid, MongoTiming>();
+        readonly ConcurrentDictionary<MongoCursor, MongoTiming> _inProgressCursors = new ConcurrentDictionary<MongoCursor, MongoTiming>();
 
         /// <summary>
         /// The profiling session this SqlProfiler is part of.
@@ -33,9 +30,9 @@ namespace StackExchange.Profiling.Mongo
         public Guid ExecuteStartImpl(string collectionName, object query, ExecuteType type)
         {
             var id = Guid.NewGuid();
-            var sqlTiming = new MongoTiming(collectionName, query.ToString(), type, Profiler);
+            var mongoTiming = new MongoTiming(collectionName, query.ToString(), type, Profiler);
 
-            _inProgress[id] = sqlTiming;
+            _inProgress[id] = mongoTiming;
             return id;
         }
 
@@ -43,9 +40,9 @@ namespace StackExchange.Profiling.Mongo
         {
             var id = Guid.NewGuid();
             var q = String.Format("{0}\n{1}", query, update);
-            var sqlTiming = new MongoTiming(collectionName, q, type, Profiler);
+            var mongoTiming = new MongoTiming(collectionName, q, type, Profiler);
 
-            _inProgress[id] = sqlTiming;
+            _inProgress[id] = mongoTiming;
             return id;
         }
 

@@ -74,11 +74,11 @@ namespace StackExchange.Profiling
             }
         }
 
-        public SqlTiming(string command, ExecuteType type, MiniProfiler profiler)
+        public SqlTiming(string commandText, ExecuteType type, MiniProfiler profiler)
         {
             Id = Guid.NewGuid();
 
-            CommandString = command;
+            CommandString = AddSpacesToParameters(commandText);
             Parameters = new List<SqlTimingParameter>();
             ExecuteType = type;
 
