@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using MongoDB.Driver;
 using StackExchange.Profiling.Data;
+using MongoDB.Bson.Serialization;
 
 namespace StackExchange.Profiling.Mongo
 {
@@ -11,14 +12,18 @@ namespace StackExchange.Profiling.Mongo
             : base(database, settings)
         {
         }
-
+        
         public override MongoCursor<TDocument> FindAs<TDocument>(IMongoQuery query)
         {
-            if (MiniProfiler.Current != null) return new ProfiledMongoCursor<TDocument>(this, query, MiniProfiler.Current);
+            if (MiniProfiler.Current != null)
+            {
+                var serializer = BsonSerializer.LookupSerializer(typeof(TDocument));
+                return new ProfiledMongoCursor<TDocument>(this, query, this.Settings.ReadPreference, serializer, null, MiniProfiler.Current);
+            }
             return base.FindAs<TDocument>(query);
         }
 
-        public override System.Collections.Generic.IEnumerable<SafeModeResult> InsertBatch<TNominalType>(System.Collections.Generic.IEnumerable<TNominalType> documents, MongoInsertOptions options)
+        public override System.Collections.Generic.IEnumerable<WriteConcernResult> InsertBatch<TNominalType>(System.Collections.Generic.IEnumerable<TNominalType> documents, MongoInsertOptions options)
         {
             IMongoDbProfiler profiler = MiniProfiler.Current;
             if (profiler == null) return base.InsertBatch<TNominalType>(documents, options);
@@ -36,7 +41,7 @@ namespace StackExchange.Profiling.Mongo
             }
         }
 
-        public override SafeModeResult Update(IMongoQuery query, IMongoUpdate update, MongoUpdateOptions options)
+        public override WriteConcernResult Update(IMongoQuery query, IMongoUpdate update, MongoUpdateOptions options)
         {
             IMongoDbProfiler profiler = MiniProfiler.Current;
             if (profiler == null) return base.Update(query, update, options);
@@ -52,7 +57,7 @@ namespace StackExchange.Profiling.Mongo
             }
         }
 
-        public override SafeModeResult Remove(IMongoQuery query, RemoveFlags flags, SafeMode safeMode)
+        public override WriteConcernResult Remove(IMongoQuery query, RemoveFlags flags, WriteConcern safeMode)
         {
             IMongoDbProfiler profiler = MiniProfiler.Current;
             if (profiler == null) return base.Remove(query, flags, safeMode);

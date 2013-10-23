@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MongoDB.Driver;
+using MongoDB.Bson.Serialization;
 
 namespace StackExchange.Profiling.Mongo
 {
@@ -7,8 +8,10 @@ namespace StackExchange.Profiling.Mongo
     {
         private readonly IMongoDbProfiler _profiler;
 
-        public ProfiledMongoCursor(MongoCollection collection, IMongoQuery query, IMongoDbProfiler profiler)
-            : base(collection, query)
+        public ProfiledMongoCursor(MongoCollection collection, IMongoQuery query, ReadPreference readPreference,
+                                   IBsonSerializer serializer, IBsonSerializationOptions serializationOptions,
+                                   IMongoDbProfiler profiler)
+            : base(collection, query, readPreference, serializer, serializationOptions)
         {
             _profiler = profiler;
         }

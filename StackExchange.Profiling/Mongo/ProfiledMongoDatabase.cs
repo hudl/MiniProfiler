@@ -10,8 +10,8 @@ namespace StackExchange.Profiling.Mongo
         private readonly object _databaseLock = new object();
         private readonly Dictionary<MongoCollectionSettings, MongoCollection> _collections = new Dictionary<MongoCollectionSettings, MongoCollection>();
 
-        public ProfiledMongoDatabase(MongoServer server, MongoDatabaseSettings settings)
-            : base(server, settings)
+        public ProfiledMongoDatabase(MongoServer server, string databaseName, MongoDatabaseSettings settings)
+            : base(server, databaseName, settings)
         {
         }
 
